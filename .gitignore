@@ -40,3 +40,6 @@ dist/
 # Docker Compose backup files
 *.bak
 *.bak-*
+
+# Cho phep theo doi file luoc do database
+!db/init/01-schema.sql
