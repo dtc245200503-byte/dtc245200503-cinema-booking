@@ -1,0 +1,30 @@
+# ===== Lớp 3: Loki + Promtail (log tập trung, truy vấn bằng LogQL trong Grafana) =====
+services:
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: cinema-loki
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    networks:
+      monitoring: {}
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: cinema-promtail
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-data:/promtail
+    depends_on:
+      - loki
+    networks:
+      monitoring: {}
+
+volumes:
+  loki-data: {}
+  promtail-data: {}
