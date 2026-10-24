@@ -43,3 +43,6 @@ dist/
 
 # Cho phep theo doi file luoc do database
 !db/init/01-schema.sql
+
+# Local README backup
+README.md.backup
