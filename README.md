@@ -26,8 +26,8 @@ Log      : Promtail (đọc log mọi container qua docker.sock) ──> Loki �
 | db | mysql:8.0 | Cơ sở dữ liệu |
 | phpmyadmin | phpmyadmin:5.2-apache | Công cụ quản lý MySQL |
 | prometheus, grafana | prom/prometheus 2.53, grafana 11.2 | Thu thập số liệu và biểu đồ |
-| cadvisor, mysqld-exporter, nginx-exporter | cadvisor 0.49, mysqld-exporter 0.15, nginx-exporter 1.3 | Số liệu container, MySQL, Nginx |
-| loki, promtail | grafana/loki, promtail 2.9.8 | Log tập trung |
+| cadvisor, mysqld-exporter, nginx-exporter | cadvisor 0.54.0, mysqld-exporter 0.15, nginx-exporter 1.3 | Số liệu container, MySQL, Nginx |
+| loki, promtail | grafana/loki, promtail 3.4.2 | Log tập trung |
 
 Cách ly mạng: `edge` (chỉ Nginx), `app`, `data`, `monitoring` (ba mạng sau là *internal*, container không ra được Internet). MySQL không publish cổng nào.
 
@@ -58,7 +58,8 @@ Cài Docker nếu chưa có: `sudo apt-get install -y docker.io docker-compose-v
 ## 4. Chạy hệ thống
 
 ```bash
-git clone <địa chỉ repo> cinema && cd cinema
+git clone https://github.com/dtc245200503-byte/dtc245200503-cinema-booking.git
+cd dtc245200503-cinema-booking
 bash scripts/init.sh 192.168.198.134      # thay bằng IP hoặc tên máy chủ của em
 docker compose up -d --build
 docker compose ps                          # các dịch vụ phải ở trạng thái running / healthy
@@ -130,36 +131,29 @@ Bảng điều khiển *Cinema - Log tập trung (Loki)* hiển thị sẵn các
 
 Ngoại lệ có chủ ý: phpMyAdmin (Apache khởi động bằng root rồi hạ quyền), cAdvisor (cần đọc cgroup của máy chủ), Promtail (cần đọc `docker.sock` ở chế độ chỉ đọc).
 
-## 7. Quy trình commit trên GitHub
+## 7. Quản lý mã nguồn trên GitHub
 
-Tài khoản và repository đặt tên theo MSSV, ví dụ `dtc245200503/cinema-booking`. Chạy toàn bộ hệ thống một lần (mục 4) và kiểm tra từng bước 1-6 xong, sau đó chia commit theo từng nhóm file để lịch sử thể hiện đúng từng giai đoạn:
+Sinh viên: Nguyễn Văn Thanh - DTC245200503
+
+Repository: https://github.com/dtc245200503-byte/dtc245200503-cinema-booking
+
+Dự án được quản lý bằng Git trên nhánh `main`.
+
+| Commit | Mã commit | Nội dung |
+|---|---|---|
+| 1 | `c8b65ea` | Triển khai Cinema, MySQL, phpMyAdmin và Nginx Reverse Proxy |
+| 2 | `70bdb9a` | Tích hợp Prometheus, Grafana, cAdvisor và các exporter |
+| 3 | `b833805` | Tích hợp Loki, Promtail và dashboard LogQL |
+| 4 | `4686726` | Bổ sung lược đồ khởi tạo cơ sở dữ liệu Cinema |
+
+Kiểm tra lịch sử Git:
 
 ```bash
-git init && git branch -M main
-
-# Commit 1: ứng dụng + MySQL + phpMyAdmin + Nginx reverse proxy (bước 1-3)
-git add .gitignore .env.example README.md docker-compose.yml backend frontend db nginx phpmyadmin scripts
-git commit -m "feat: ứng dụng đặt vé FastAPI + React, MySQL, phpMyAdmin, Nginx reverse proxy HTTPS bằng Docker Compose"
-
-# Commit 2: Prometheus + Grafana (bước 4)
-git add docker-compose.monitoring.yml monitoring/prometheus monitoring/grafana/provisioning/dashboards \
-        monitoring/grafana/provisioning/datasources/prometheus.yml monitoring/grafana/dashboards/cinema-overview.json
-git commit -m "feat: giám sát bằng Prometheus, Grafana, cAdvisor, mysqld-exporter, nginx-exporter"
-
-# Commit 3: Loki + Promtail (bước 5)
-git add docker-compose.logging.yml monitoring/loki monitoring/promtail \
-        monitoring/grafana/provisioning/datasources/loki.yml monitoring/grafana/dashboards/cinema-logs.json
-git commit -m "feat: log tập trung Loki + Promtail, truy vấn LogQL"
-
-# Commit 4: hardening (bước 6) và minh chứng
-git add docker-compose.hardening.yml docs
-git commit -m "feat: hardening container (read-only, cap_drop, giới hạn tài nguyên) và ảnh minh chứng"
-
-git remote add origin https://github.com/<tài-khoản>/cinema-booking.git
-git push -u origin main
+git log --oneline
+git status
 ```
 
-Muốn mỗi commit tương ứng một hệ thống chạy được: trước mỗi commit, tạm thời chỉ giữ các file của những lớp đã commit trong thư mục (di chuyển file lớp sau ra ngoài), chạy `bash scripts/layers.sh && docker compose up -d`, kiểm tra rồi mới commit. Script `layers.sh` chỉ nạp các lớp `docker-compose.*.yml` đang có trong thư mục.
+Các file chứa thông tin nhạy cảm như `.env`, `secrets/`, `certs/` và `backups/` được loại trừ bằng `.gitignore`.
 
 ## 8. Sao lưu, khôi phục, kiểm thử
 
