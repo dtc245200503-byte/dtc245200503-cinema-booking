@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs: [{ targets: ["localhost:9090"] }]
+
+  - job_name: cinema-api          # ứng dụng FastAPI: số request, độ trễ, lỗi 5xx
+    metrics_path: /metrics
+    static_configs: [{ targets: ["backend:8000"] }]
+
+  - job_name: cadvisor            # tài nguyên của từng container (CPU, RAM, mạng)
+    static_configs: [{ targets: ["cadvisor:8080"] }]
+
+  - job_name: mysql               # cơ sở dữ liệu MySQL
+    static_configs: [{ targets: ["mysqld-exporter:9104"] }]
+
+  - job_name: nginx               # web server Nginx
+    static_configs: [{ targets: ["nginx-exporter:9113"] }]
