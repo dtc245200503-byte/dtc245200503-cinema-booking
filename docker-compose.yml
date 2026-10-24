@@ -1,0 +1,113 @@
+# ===== Lớp 1 (lõi): MySQL + phpMyAdmin + backend + Nginx reverse proxy =====
+# Chạy:  bash scripts/init.sh <IP-hoặc-tên-máy>   rồi   docker compose up -d --build
+# Các lớp mở rộng (giám sát, log, hardening) nằm ở docker-compose.*.yml và được nạp qua COMPOSE_FILE trong .env
+name: cinema
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: cinema-db
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --innodb-buffer-pool-size=128M
+      - --max-connections=60
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Hãy chạy scripts/init.sh để tạo file .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cinema}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?thiếu APP_DB_PASSWORD}
+      EXPORTER_DB_PASSWORD: ${EXPORTER_DB_PASSWORD:?thiếu EXPORTER_DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      data: {}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    container_name: cinema-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_ABSOLUTE_URI: ${PUBLIC_URL:-https://localhost}/pma/
+    volumes:
+      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      app: {}
+      data: {}
+
+  backend:
+    build: ./backend
+    image: cinema-backend:1.0
+    container_name: cinema-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://cinema_app:${APP_DB_PASSWORD}@db:3306/${MYSQL_DATABASE:-cinema}?charset=utf8mb4
+      SECRET_KEY: ${SECRET_KEY:?thiếu SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?thiếu ADMIN_PASSWORD}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?thiếu DEMO_PASSWORD}
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prom
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      app: {}
+      data: {}
+      monitoring: {}
+
+  nginx:
+    build: ./frontend
+    image: cinema-web:1.0
+    container_name: cinema-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:8080"
+      - "${HTTPS_PORT:-443}:8443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/security-headers.conf:/etc/nginx/snippets/security-headers.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - uploads:/usr/share/nginx/uploads:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      edge: {}
+      app: {}
+      monitoring: {}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/stub_status || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# Cách ly mạng:
+#  edge       : duy nhất mạng có thể ra ngoài, chỉ Nginx (và cổng quản trị Prometheus trên loopback) gắn vào
+#  app        : Nginx <-> backend / phpMyAdmin / Grafana         (internal: không có đường ra Internet)
+#  data       : backend / phpMyAdmin / exporter <-> MySQL         (internal)
+#  monitoring : Prometheus, exporter, Loki, Promtail             (internal)
+networks:
+  edge: {}
+  app:
+    internal: true
+  data:
+    internal: true
+  monitoring:
+    internal: true
+
+volumes:
+  db-data: {}
+  uploads: {}

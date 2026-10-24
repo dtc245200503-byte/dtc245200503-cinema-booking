@@ -1,0 +1,42 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Secrets and certificates
+secrets/
+certs/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Database backups
+backups/
+*.sql
+*.sql.gz
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# Node.js
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+
+# OS and editors
+.DS_Store
+.vscode/
+
+# Docker Compose backup files
+*.bak
+*.bak-*

@@ -1,0 +1,67 @@
+# ===== Lớp 4: Hardening ở mức container (nạp CUỐI CÙNG, sau các lớp còn lại) =====
+# Ngoài ra đã áp dụng ở các lớp trước: người dùng không đặc quyền trong Dockerfile, cách ly mạng,
+# mật khẩu ngẫu nhiên mạnh trong .env, tài khoản DB quyền tối thiểu, header bảo mật Nginx.
+services:
+  backend:
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 200
+    mem_limit: 512m
+
+  nginx:
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 100
+    mem_limit: 128m
+
+  db:
+    user: "999:999"            # chạy bằng người dùng mysql, không phải root
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 300
+    mem_limit: 768m
+
+  phpmyadmin:                  # Apache khởi động bằng root rồi hạ quyền xuống www-data
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 100
+    mem_limit: 256m
+
+  prometheus:
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+
+  grafana:
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+
+  mysqld-exporter:
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+
+  nginx-exporter:
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+
+  cadvisor:                    # cần đọc cgroup của máy chủ nên giữ ở mức hạn chế
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 192m
+
+  loki:
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+
+  promtail:                    # cần đọc docker.sock (chỉ đọc) nên chạy root, giới hạn thêm quyền
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 128m
